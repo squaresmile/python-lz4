@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 from setuptools import setup, find_packages, Extension
 import sys
 from distutils import ccompiler
@@ -32,6 +33,14 @@ else:
             pass
         return installed
     liblz4_found = pkgconfig_installed_check('liblz4', LZ4_REQUIRED_VERSION, default=False)
+
+# Establish if we want to build experimental functionality or not.
+experimental = os.environ.get("PYLZ4_EXPERIMENTAL", False)
+if experimental is not False:
+    if experimental.upper() in ("1", "TRUE"):
+        experimental = True
+    else:
+        experimental = False
 
 # Set up the extension modules. If a system wide lz4 library is found, and is
 # recent enough, we'll use that. Otherwise we'll build with the bundled one. If
@@ -126,13 +135,13 @@ lz4stream = Extension('lz4.stream._stream',
                       lz4stream_sources,
                       **extension_kwargs)
 
-install_requires = []
+ext_modules = [lz4version, lz4block, lz4frame]
 
-# On Python earlier than 3.0 the builtins package isn't included, but it is
-# provided by the future package
-if sys.version_info < (3, 0):
-    install_requires.append('future')
-
+if experimental is True:
+    ext_modules.append(lz4stream)
+    packages = find_packages()
+else:
+    packages = find_packages(exclude=("lz4.stream",))
 
 # Dependencies for testing. We define a list here, so that we can
 # refer to it for the tests_require and the extras_require arguments
@@ -156,24 +165,18 @@ setup(
     use_scm_version={
         'write_to': "lz4/version.py",
     },
-    python_requires=">=3.5",
+    python_requires=">=3.7",
     setup_requires=[
         'setuptools_scm',
         'pkgconfig',
     ] + pytest_runner,
-    install_requires=install_requires,
     description="LZ4 Bindings for Python",
     long_description=open('README.rst', 'r').read(),
     author='Jonathan Underwood',
     author_email='jonathan.underwood@gmail.com',
     url='https://github.com/python-lz4/python-lz4',
-    packages=find_packages(),
-    ext_modules=[
-        lz4version,
-        lz4block,
-        lz4frame,
-        lz4stream
-    ],
+    packages=packages,
+    ext_modules=ext_modules,
     tests_require=tests_require,
     extras_require={
         'tests': tests_require,
@@ -191,9 +194,9 @@ setup(
         'Intended Audience :: Developers',
         'Programming Language :: C',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
 )
